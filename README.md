@@ -22,7 +22,7 @@ Wang et al., *Tent: Fully Test-Time Adaptation by Entropy Minimisation* — [arX
 
 ## Overview
 
-This repository provides a minimal, fully controlled image dataset for empirically testing a central hypothesis motivating AdaBN (Li et al., 2016):
+This repository provides a minimal, fully controlled image dataset for empirically testing a central hypothesis motivating Adaptive Batch Normalisation (AdaBN):
 
 Label-related knowledge is primarily stored in the network weights, whereas domain-related information is reflected in Batch Normalisation statistics, namely the running mean (μ) and variance (σ²) accumulated from training data.
 

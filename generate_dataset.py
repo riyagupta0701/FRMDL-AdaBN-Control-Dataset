@@ -175,6 +175,7 @@ def make_bn_stats_figure(root: str):
         ax.tick_params(colors='#888888')
         ax.set_title(xlabel, fontsize=11, pad=6)
 
+    ax1.legend()
     fig.suptitle(
         'BN Statistics: Source vs Target\n'
         'Mismatched statistics degrade inference; AdaBN corrects this',
