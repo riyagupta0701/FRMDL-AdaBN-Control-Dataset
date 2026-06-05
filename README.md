@@ -238,7 +238,7 @@ FRMDL-AdaBN-Control-Dataset/
 │
 └── figures/
     ├── domain_shift_vis.png
-    ├── bn_stats_comparison.png
+    ├── bn_stats_vis.png
     ├── dataset_histograms.png
     └── dataset_statistics.png
 ```
@@ -260,7 +260,16 @@ python generate_dataset.py
 ```
 
 This writes 6000 PNG images to `source/` and `target/`, generates the two
-diagnostic figures to `figures/`, and writes `metadata.json`.
+diagnostic figures (`domain_shift_vis.png`, `bn_stats_vis.png`) to `figures/`,
+and writes `metadata.json`.
+
+```bash
+# 4. (Optional) Validate the generated dataset statistics
+python validate_dataset.py
+
+# 5. (Optional) Generate additional histogram and statistics plots
+python generate_validation_plots.py
+```
 
 ### Load with PyTorch (example)
 
