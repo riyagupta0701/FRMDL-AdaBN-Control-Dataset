@@ -1,97 +1,41 @@
-"""
-generate_dataset.py
-===================
-Controlled dataset for testing the AdaBN property:
-
-    "BN statistics (mean and variance) encode domain identity.
-     Mismatching them at test time causes accuracy loss."
-                                    -- Li et al., arXiv:1603.04779
-
-The dataset contains two domains of simple geometric shapes
-(circles, squares, triangles -- 3 classes, 200 images each domain).
-
-SOURCE domain: pixel intensities drawn from N(mu_s, sigma_s)
-               per class, with moderate brightness.
-TARGET domain: IDENTICAL shapes/labels, but pixel intensities
-               drawn from N(mu_t, sigma_t) that are substantially
-               brighter and higher variance.
-
-Domain shift is ONLY in the BN-relevant statistics (mean, variance),
-NOT in the shape geometry or class identity. This precisely isolates
-the property AdaBN corrects.
-
-Directory structure produced
------------------------------
-adabn_dataset/
-  source/
-    class_0_circle/      img_0000.png ... img_0199.png
-    class_1_square/
-    class_2_triangle/
-  target/
-    class_0_circle/
-    class_1_square/
-    class_2_triangle/
-  figures/
-    domain_shift_vis.png
-    bn_stats_comparison.png
-  metadata.json
-  generate_dataset.py  (this file)
-
-Usage
------
-    python generate_dataset.py
-"""
-
 import os
 import json
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from PIL import Image
 
-# ------------------------------------------------------------------ #
 # Reproducibility
-# ------------------------------------------------------------------ #
 SEED = 42
 rng  = np.random.default_rng(SEED)
 
-# ------------------------------------------------------------------ #
 # Dataset parameters
-# ------------------------------------------------------------------ #
 IMG_SIZE    = 32           # 32x32 single-channel images
-N_PER_CLASS = 200          # images per class per domain
+N_PER_CLASS = 1000          # images per class per domain
 CLASSES     = ['circle', 'square', 'triangle']
 N_CLASSES   = len(CLASSES)
 
-# Source domain: moderate brightness, low variance
-# These become the BN running statistics stored during training.
+# Source-domain intensity distribution.
+# All classes share identical statistics so that shape remains the only label-related signal.
 SOURCE_STATS = {
-    'circle':   {'mean': 0.35, 'std': 0.08},
-    'square':   {'mean': 0.50, 'std': 0.08},
-    'triangle': {'mean': 0.42, 'std': 0.08},
+    'circle':   {'mean': 0.45, 'std': 0.08},
+    'square':   {'mean': 0.45, 'std': 0.08},
+    'triangle': {'mean': 0.45, 'std': 0.08},
 }
 
-# Target domain: substantially brighter + higher variance.
-# ONLY the pixel statistics change; shapes/labels are identical.
-# A network trained on source whose BN layers store source statistics
-# will see activation distributions mismatched at every layer --
-# exactly the problem AdaBN corrects by re-estimating mu and sigma^2.
+# Target-domain intensity distribution.
+# The target domain differs only in intensity statistics, creating a controlled BN-relevant domain shift.
 TARGET_STATS = {
-    'circle':   {'mean': 0.72, 'std': 0.14},
-    'square':   {'mean': 0.82, 'std': 0.14},
-    'triangle': {'mean': 0.77, 'std': 0.14},
+    'circle':   {'mean': 0.75, 'std': 0.14},
+    'square':   {'mean': 0.75, 'std': 0.14},
+    'triangle': {'mean': 0.75, 'std': 0.14},
 }
 
-# Path setup: script lives in code/, dataset root is one level up
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT     = os.path.join(BASE_DIR, '..')
 
 
-# ------------------------------------------------------------------ #
-# Shape drawing
-# ------------------------------------------------------------------ #
-
+# Class identity is determined solely by geometric shape.
+# Domain identity is determined solely by intensity statistics.
 def draw_shape(class_name: str, bg_mean: float, bg_std: float,
                size: int = IMG_SIZE) -> np.ndarray:
     """
@@ -133,7 +77,6 @@ def draw_shape(class_name: str, bg_mean: float, bg_std: float,
         img[y0:y1, x0:x1] = fg
 
     elif class_name == 'triangle':
-        # Rasterise an upward-pointing isosceles triangle
         apex_y = cy - r
         base_y = cy + r
         for row in range(max(0, apex_y), min(size, base_y + 1)):
@@ -146,10 +89,7 @@ def draw_shape(class_name: str, bg_mean: float, bg_std: float,
     return img.astype(np.float32)
 
 
-# ------------------------------------------------------------------ #
 # Domain generation
-# ------------------------------------------------------------------ #
-
 def generate_domain(domain_name: str, stats: dict, root: str):
     """Write all images for one domain and return path records."""
     records = []
@@ -174,66 +114,34 @@ def generate_domain(domain_name: str, stats: dict, root: str):
     return records
 
 
-# ------------------------------------------------------------------ #
 # Figure 1 -- domain shift visualisation
-# ------------------------------------------------------------------ #
-
 def make_shift_figure(root: str):
     """Side-by-side grid: source (row 0) vs target (row 1), 3 classes."""
     fig, axes = plt.subplots(2, N_CLASSES, figsize=(9, 6))
-    fig.patch.set_facecolor('#0f0f14')
 
     domain_rows = [('Source', SOURCE_STATS), ('Target', TARGET_STATS)]
     for row, (dom_label, stats) in enumerate(domain_rows):
         for col, cls in enumerate(CLASSES):
             ax = axes[row][col]
-            ax.set_facecolor('#0f0f14')
             sample = draw_shape(cls, stats[cls]['mean'], stats[cls]['std'])
-            ax.imshow(sample, cmap='gray', vmin=0, vmax=1,
-                      interpolation='nearest')
+            ax.imshow(sample, cmap='gray', vmin=0, vmax=1, interpolation='nearest')
             ax.set_xticks([]); ax.set_yticks([])
             for sp in ax.spines.values():
                 sp.set_visible(False)
             if row == 0:
-                ax.set_title(cls.capitalize(), color='#e0e0e0',
-                             fontsize=13, fontweight='bold', pad=6)
+                ax.set_title(cls.capitalize(), fontsize=13, fontweight='bold', pad=6)
             if col == 0:
-                ax.set_ylabel(dom_label, color='#aaaaaa',
-                              fontsize=11, labelpad=8)
+                ax.set_ylabel(dom_label, fontsize=11, labelpad=8)
 
-    # Inset histogram
-    src_px = rng.normal(0.42, 0.08, 6000).clip(0, 1)
-    tgt_px = rng.normal(0.77, 0.14, 6000).clip(0, 1)
-    ax_h = fig.add_axes([0.68, 0.11, 0.28, 0.22])
-    ax_h.set_facecolor('#1a1a24')
-    ax_h.hist(src_px, bins=40, color='#4c9be8', alpha=0.75,
-              density=True, label='Source')
-    ax_h.hist(tgt_px, bins=40, color='#e8844c', alpha=0.75,
-              density=True, label='Target')
-    ax_h.set_xlabel('Pixel intensity', color='#cccccc', fontsize=8)
-    ax_h.set_ylabel('Density',        color='#cccccc', fontsize=8)
-    ax_h.tick_params(colors='#888888', labelsize=7)
-    for sp in ax_h.spines.values():
-        sp.set_color('#333344')
-    ax_h.legend(fontsize=7, labelcolor='#cccccc',
-                facecolor='#1a1a24', edgecolor='#333344')
-
-    fig.suptitle(
-        'Controlled Domain Shift Dataset\n'
-        'Shape identity is unchanged -- only pixel statistics shift',
-        color='#e0e0e0', fontsize=12, y=0.97)
-    fig.tight_layout(rect=[0, 0, 1, 0.93])
+    fig.suptitle('Shape identity is unchanged, only pixel statistics shift', fontsize=12, y=0.97)
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
     out = os.path.join(root, 'figures', 'domain_shift_vis.png')
-    fig.savefig(out, dpi=140, bbox_inches='tight',
-                facecolor=fig.get_facecolor())
+    fig.savefig(out, dpi=140, bbox_inches='tight')
     plt.close(fig)
     print(f'Saved: {out}')
 
 
-# ------------------------------------------------------------------ #
 # Figure 2 -- BN statistics comparison
-# ------------------------------------------------------------------ #
-
 def make_bn_stats_figure(root: str):
     """
     Simulate BN layer statistics for source vs target.
@@ -254,7 +162,6 @@ def make_bn_stats_figure(root: str):
             tgt_m.append(ti.mean()); tgt_s.append(ti.std())
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
-    fig.patch.set_facecolor('#0f0f14')
     kw_src = dict(color='#4c9be8', alpha=0.75, bins=35, density=True)
     kw_tgt = dict(color='#e8844c', alpha=0.75, bins=35, density=True)
 
@@ -262,33 +169,23 @@ def make_bn_stats_figure(root: str):
         (ax1, src_m, tgt_m, 'Batch-level mean (mu)'),
         (ax2, src_s, tgt_s, 'Batch-level std (sigma)'),
     ]:
-        ax.set_facecolor('#1a1a24')
         ax.hist(sv, **kw_src, label='Source domain')
         ax.hist(tv, **kw_tgt, label='Target domain')
-        ax.set_xlabel(xlabel,   color='#cccccc', fontsize=10)
-        ax.set_ylabel('Density',color='#cccccc', fontsize=10)
+        ax.set_xlabel(xlabel, fontsize=10)
+        ax.set_ylabel('Density', fontsize=10)
         ax.tick_params(colors='#888888')
-        for sp in ax.spines.values():
-            sp.set_color('#333344')
-        ax.legend(fontsize=9, labelcolor='#cccccc',
-                  facecolor='#1a1a24', edgecolor='#333344')
-        ax.set_title(xlabel, color='#e0e0e0', fontsize=11, pad=6)
+        ax.set_title(xlabel, fontsize=11, pad=6)
 
     fig.suptitle(
         'BN Statistics: Source vs Target\n'
         'Mismatched statistics degrade inference; AdaBN corrects this',
-        color='#e0e0e0', fontsize=12, y=1.03)
+        fontsize=12, y=1.03)
     fig.tight_layout()
-    out = os.path.join(root, 'figures', 'bn_stats_comparison.png')
-    fig.savefig(out, dpi=140, bbox_inches='tight',
-                facecolor=fig.get_facecolor())
+    out = os.path.join(root, 'figures', 'bn_stats_vis.png')
+    fig.savefig(out, dpi=140, bbox_inches='tight')
     plt.close(fig)
     print(f'Saved: {out}')
 
-
-# ------------------------------------------------------------------ #
-# Entry point
-# ------------------------------------------------------------------ #
 
 if __name__ == '__main__':
     print('Generating source domain ...')
@@ -304,6 +201,8 @@ if __name__ == '__main__':
     make_shift_figure(BASE_DIR)
     make_bn_stats_figure(BASE_DIR)
 
+    # Store the parameters and measured statistics used to create the synthetic
+    # domains so that the generated domain shift is fully reproducible.
     metadata = {
         'description': (
             'Controlled dataset for AdaBN (Li et al., arXiv:1603.04779). '
@@ -319,6 +218,11 @@ if __name__ == '__main__':
         'classes':      CLASSES,
         'source_stats': SOURCE_STATS,
         'target_stats': TARGET_STATS,
+        "class_counts": {
+            "circle": N_PER_CLASS,
+            "square": N_PER_CLASS,
+            "triangle": N_PER_CLASS
+        },
         'total_images': len(src_records) + len(tgt_records),
         'example_records': src_records[:3] + tgt_records[:3],
     }
