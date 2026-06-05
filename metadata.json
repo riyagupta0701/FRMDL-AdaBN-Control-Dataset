@@ -3,7 +3,7 @@
   "paper": "Li et al., arXiv:1603.04779",
   "seed": 42,
   "img_size": 32,
-  "n_per_class": 200,
+  "n_per_class": 1000,
   "classes": [
     "circle",
     "square",
@@ -11,33 +11,38 @@
   ],
   "source_stats": {
     "circle": {
-      "mean": 0.35,
+      "mean": 0.45,
       "std": 0.08
     },
     "square": {
-      "mean": 0.5,
+      "mean": 0.45,
       "std": 0.08
     },
     "triangle": {
-      "mean": 0.42,
+      "mean": 0.45,
       "std": 0.08
     }
   },
   "target_stats": {
     "circle": {
-      "mean": 0.72,
+      "mean": 0.75,
       "std": 0.14
     },
     "square": {
-      "mean": 0.82,
+      "mean": 0.75,
       "std": 0.14
     },
     "triangle": {
-      "mean": 0.77,
+      "mean": 0.75,
       "std": 0.14
     }
   },
-  "total_images": 1200,
+  "class_counts": {
+    "circle": 1000,
+    "square": 1000,
+    "triangle": 1000
+  },
+  "total_images": 6000,
   "example_records": [
     {
       "path": "source/class_0_circle/img_0000.png",
