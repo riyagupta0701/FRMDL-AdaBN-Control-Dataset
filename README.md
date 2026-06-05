@@ -1,34 +1,33 @@
-# AdaBN Controlled Dataset
+# AdaBN Control Dataset
 
-> **Controlled dataset for testing the Batch Normalisation statistics domain-shift property**  
-> Related paper: Li et al., *Revisiting Batch Normalisation for Practical Domain Adaptation* — [arXiv:1603.04779](https://arxiv.org/abs/1603.04779)  
-> Reproduction target: Wang et al., *Tent: Fully Test-Time Adaptation by Entropy Minimisation* — [arXiv:2006.10726](https://arxiv.org/abs/2006.10726)
+Control dataset for testing the Batch Normalisation statistics domain-shift property.
 
----
+Based on: <br>
+Li et al., *Revisiting Batch Normalisation for Practical Domain Adaptation* — [arXiv:1603.04779](https://arxiv.org/abs/1603.04779)  
+Wang et al., *Tent: Fully Test-Time Adaptation by Entropy Minimisation* — [arXiv:2006.10726](https://arxiv.org/abs/2006.10726)
+
 
 ## Table of Contents
 
 1. [Overview](#overview)
 2. [Motivation & Tested Property](#motivation--tested-property)
 3. [Dataset Description](#dataset-description)
-4. [Repository Structure](#repository-structure)
-5. [Quick Start](#quick-start)
-6. [Generation Method](#generation-method)
-7. [Expected Experimental Outcomes](#expected-experimental-outcomes)
-8. [Deliverables](#deliverables)
-9. [Requirements](#requirements)
-10. [References](#references)
-11. [Licence](#licence)
+4. [Controlled Factors](#controlled-factors)
+5. [Why this is a controlled dataset?](#why-this-is-a-control-dataset)
+6. [Repository Structure](#repository-structure)
+7. [Quick Start](#quick-start)
+8. [Generation Method](#generation-method)
+9. [Expected Experimental Outcomes](#expected-experimental-outcomes)
+10. [Limitations](#limitations)
 
----
 
 ## Overview
 
 This repository provides a **minimal, fully controlled** image dataset for empirically
-testing the central claim of AdaBN (Li et al., 2017):
+testing a central hypothesis motivating AdaBN (Li et al., 2017):
 
 > *Label-related knowledge is stored in the weight matrices of each layer, whereas
-> domain-related knowledge is encoded in the Batch Normalisation statistics — the
+> domain-related information is reflected in Batch Normalisation statistics — the
 > per-channel running mean μ and variance σ² accumulated from the training data.*
 
 The dataset is designed so that **exactly one confounder** varies between the source
@@ -41,7 +40,6 @@ The dataset is produced as part of a reproduction study of
 [Tent (arXiv:2006.10726)](https://arxiv.org/abs/2006.10726), for which AdaBN is the
 primary test-time normalisation baseline.
 
----
 
 ## Motivation & Tested Property
 
@@ -63,11 +61,15 @@ accuracy degradation under domain shift.
 
 | | |
 |---|---|
-| **Property** | BN statistics (μ, σ²) encode domain identity. Mismatching them at test time degrades accuracy; correcting them restores it. |
+| Property | Domain-specific information is reflected in BN statistics (μ, σ²). Mismatched source statistics contribute to domain shift, while re-estimating target statistics can reduce this mismatch. |
 | **Single confounder** | Pixel intensity distribution (μ_bg, σ_bg) only. All other factors are identical across domains. |
 | **Control** | Source-trained model on source test images → high accuracy. |
 | **Problem** | Source-trained model on target images (source BN stats) → degraded accuracy. |
 | **Fix** | Re-estimate BN stats from unlabelled target images (AdaBN) → accuracy recovered. |
+
+### Connection to AdaBN
+
+The motivation comes directly from the pilot experiment in AdaBN (Section 3.1, Figure 2), where Batch Normalisation statistics collected from different domains form clearly separable clusters. This observation suggests that BN statistics capture domain-specific characteristics. AdaBN therefore adapts a network by replacing source-domain BN statistics with statistics computed from the target domain while keeping the learned weights fixed.
 
 ### Why this matters for Tent
 
@@ -77,123 +79,170 @@ Understanding why re-estimating the statistics alone already helps, and by how m
 is essential groundwork for understanding the motivation and incremental contribution
 of Tent. The controlled setting here isolates that step precisely.
 
----
+### Goal of the Control Dataset
+
+The goal of this control dataset is to isolate the specific mechanism targeted by AdaBN: the mismatch between source-domain and target-domain Batch Normalisation statistics.
+
+Within the FRMDL control-dataset framework, the dataset is designed to evaluate whether:
+
+- a controlled intensity-based domain shift is a reasonable approximation of a real distribution shift (c1),
+- a standard BN-equipped CNN provides a reasonable baseline (c2),
+- mismatched BN statistics produce measurable performance degradation (c3), and
+- re-estimating BN statistics via AdaBN alleviates this degradation (c4).
+
+By keeping classes, labels, geometry, and class frequencies fixed while varying only image intensity statistics, the dataset provides a direct test of AdaBN's central adaptation mechanism.
+
 
 ## Dataset Description
 
 | Property | Value |
 |---|---|
-| Total images | 1,200 |
+| Total images | 6000 |
 | Image size | 32 × 32 pixels, single channel (greyscale) |
 | Classes | Circle, Square, Triangle |
-| Domains | Source (darker, low variance) · Target (brighter, high variance) |
-| Images per class per domain | 200 |
+| Domains | Source · Target |
+| Images per class per domain | 1000 |
 | Random seed | 42 (`numpy.random.default_rng(42)`) |
 | Format | 8-bit greyscale PNG |
 
-### Pixel intensity parameters
+### Dataset Design
+
+The dataset is intentionally designed to isolate a single form of domain shift.
+
+The source and target domains contain:
+
+- identical classes
+- identical labels
+- identical geometric shapes
+- identical image resolution
+- identical class frequencies
+
+The only systematic difference between domains is the image intensity distribution.
+
+This design directly targets the AdaBN hypothesis that domain-specific information is reflected in Batch Normalisation statistics.
+
+### Pixel Intensity Parameters
 
 | Domain | Class | μ_bg | σ_bg |
 |---|---|---|---|
-| **Source** | Circle | 0.35 | 0.08 |
-| **Source** | Square | 0.50 | 0.08 |
-| **Source** | Triangle | 0.42 | 0.08 |
-| **Target** | Circle | 0.72 | 0.14 |
-| **Target** | Square | 0.82 | 0.14 |
-| **Target** | Triangle | 0.77 | 0.14 |
+| Source | Circle | 0.45 | 0.08 |
+| Source | Square | 0.45 | 0.08 |
+| Source | Triangle | 0.45 | 0.08 |
+| Target | Circle | 0.75 | 0.14 |
+| Target | Square | 0.75 | 0.14 |
+| Target | Triangle | 0.75 | 0.14 |
 
-The domain shift magnitude is **Cohen's d ≈ 4.4** (Δμ ≈ 0.35 relative to σ = 0.08),
-ensuring near-zero overlap between source and target intensity distributions. This
-guarantees that a classifier relying on source BN statistics will be measurably
-degraded on target data.
+All classes share identical statistics within a domain.
 
-```
-Cohen's d  =  (μ_target − μ_source) / σ_source
-           =  (0.77 − 0.42) / 0.08
-           =  4.375   →   near-zero overlap between domains
-```
+This prevents brightness from leaking class information and ensures that shape remains the only label-related signal.
 
-### Example images
+### Dataset Statistics
 
-**Source domain** — darker, lower variance
+The generated dataset was validated using `validate_dataset.py`.
 
-| Circle (μ=0.35, σ=0.08) | Square (μ=0.50, σ=0.08) | Triangle (μ=0.42, σ=0.08) |
-|:---:|:---:|:---:|
-| ![source circle](figures/source_circle.png) | ![source square](figures/source_square.png) | ![source triangle](figures/source_triangle.png) |
+#### Global Statistics
 
-**Target domain** — brighter, higher variance
+| Statistic | Source | Target |
+|---|---:|---:|
+| Images | 3000 | 3000 |
+| Mean intensity | 0.4980 | 0.7968 |
+| Standard deviation | 0.1229 | 0.1582 |
 
-| Circle (μ=0.72, σ=0.14) | Square (μ=0.82, σ=0.14) | Triangle (μ=0.77, σ=0.14) |
-|:---:|:---:|:---:|
-| ![target circle](figures/target_circle.png) | ![target square](figures/target_square.png) | ![target triangle](figures/target_triangle.png) |
+#### Measured Domain Shift
+
+| Metric | Difference |
+|---|---:|
+| Mean shift | +0.2988 |
+| Standard deviation shift | +0.0353 |
+
+#### Class Distribution
+
+| Class | Source | Target |
+|---|---:|---:|
+| Circle | 1000 | 1000 |
+| Square | 1000 | 1000 |
+| Triangle | 1000 | 1000 |
+
+The class distribution is perfectly balanced across domains.
 
 ### Domain shift visualisation
 
 ![Domain shift visualisation](figures/domain_shift_vis.png)
 
-*Source (top row) vs target (bottom row). The inset histogram shows the marginal
-pixel intensity distribution for each domain — source (blue) is narrower and darker;
-target (orange) is broader and brighter. Shape geometry is identical in both domains.*
+*Source (top row) versus target (bottom row). Shape identity is unchanged while image intensity statistics shift substantially.*
 
-### BN statistics comparison
+### BN Statistics Comparison
 
-![BN statistics comparison](figures/bn_stats_comparison.png)
+![BN statistics comparison](figures/bn_stats_vis.png)
 
-*Simulated Batch Normalisation statistics. **Left:** per-image pixel means are
-clearly separated between domains. **Right:** the same for per-image standard
-deviation. These are the statistics (μ, σ) stored by BN layers during training
-(source) and re-estimated by AdaBN at test time (target). Mismatching them causes
-incorrectly scaled activations at every layer.*
+*Simulated Batch Normalisation statistics showing the separation between source and target distributions. AdaBN addresses this mismatch by replacing source-domain BN statistics with target-domain statistics.*
 
----
+
+## Controlled Factors
+
+| Property | Source | Target |
+|-----------|---------|---------|
+| Classes | Same | Same |
+| Labels | Same | Same |
+| Shapes | Same | Same |
+| Geometry | Same | Same |
+| Resolution | Same | Same |
+| Class frequencies | Same | Same |
+| Mean intensity | Different | Different |
+| Variance | Different | Different |
+
+The only systematic difference between domains is the image intensity distribution. This design isolates the role of distribution statistics while controlling for all task-relevant factors.
+
+
+## Why this is a Control Dataset
+
+A control dataset should isolate one specific property while holding all other factors constant.
+
+In this dataset:
+
+| Factor | Controlled? |
+|----------|----------|
+| Class labels | Yes |
+| Shape geometry | Yes |
+| Class frequencies | Yes |
+| Resolution | Yes |
+| Foreground contrast | Yes |
+| Mean intensity | No |
+| Variance | No |
+
+The source and target domains differ only in image intensity statistics. Any performance degradation therefore cannot be attributed to changes in semantics, class identity, geometry, or dataset composition.
+
+This allows a direct test of the AdaBN hypothesis that domain-specific information is reflected in Batch Normalisation statistics and that mismatched BN statistics contribute to domain shift.
+
 
 ## Repository Structure
 
-```
-adabn-controlled-dataset/
+```text
+FRMDL-AdaBN-Control-Dataset/
 │
-├── README.md                    ← this file
+├── README.md
+├── generate_dataset.py
+├── validate_dataset.py
+├── generate_validation_plots.py
+├── metadata.json
 │
-├── code/
-│   └── generate_dataset.py      ← full dataset generation script
-│
-├── source/                      ← source domain (600 images)
-│   ├── class_0_circle/
-│   │   ├── img_0000.png
-│   │   └── ... (200 images)
-│   ├── class_1_square/
-│   │   └── ... (200 images)
-│   └── class_2_triangle/
-│       └── ... (200 images)
-│
-├── target/                      ← target domain (600 images)
+├── source/
 │   ├── class_0_circle/
 │   ├── class_1_square/
 │   └── class_2_triangle/
 │
-├── figures/
-│   ├── domain_shift_vis.png     ← Figure 1: side-by-side domain comparison
-│   ├── bn_stats_comparison.png  ← Figure 2: BN statistics histograms
-│   ├── source_circle.png        ← example images (used in README)
-│   ├── source_square.png
-│   ├── source_triangle.png
-│   ├── target_circle.png
-│   ├── target_square.png
-│   └── target_triangle.png
+├── target/
+│   ├── class_0_circle/
+│   ├── class_1_square/
+│   └── class_2_triangle/
 │
-├── metadata.json                ← full generation parameters + sample manifest
-│
-├── blog_post/
-│   ├── adabn_blog_british.html  ← self-contained HTML blog post (British English)
-│   ├── blog_post.tex            ← LaTeX blog post (Overleaf-ready)
-│   └── blog_overleaf.zip        ← complete Overleaf upload package
-│
-└── storyline/
-    ├── adabn_storyline.tex      ← AdaBN storyline (van Gemert format)
-    └── adabn_storyline.pdf      ← compiled storyline PDF
+└── figures/
+    ├── domain_shift_vis.png
+    ├── bn_stats_comparison.png
+    ├── dataset_histograms.png
+    └── dataset_statistics.png
 ```
 
----
 
 ## Quick Start
 
@@ -201,28 +250,17 @@ adabn-controlled-dataset/
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/YOUR_USERNAME/adabn-controlled-dataset
-cd adabn-controlled-dataset
+git clone https://github.com/riyagupta0701/FRMDL-AdaBN-Control-Dataset.git
 
 # 2. Install dependencies (no GPU required)
 pip install numpy pillow matplotlib
 
 # 3. Generate all images and figures
-python code/generate_dataset.py
+python generate_dataset.py
 ```
 
-This writes 1,200 PNG images to `source/` and `target/`, generates the two
+This writes 6000 PNG images to `source/` and `target/`, generates the two
 diagnostic figures to `figures/`, and writes `metadata.json`.
-
-### Download the pre-generated dataset
-
-A pre-generated zip archive is available on the
-[Releases page](https://github.com/YOUR_USERNAME/adabn-controlled-dataset/releases):
-
-```bash
-wget https://github.com/YOUR_USERNAME/adabn-controlled-dataset/releases/download/v1.0/adabn_dataset.zip
-unzip adabn_dataset.zip
-```
 
 ### Load with PyTorch (example)
 
@@ -260,153 +298,67 @@ def load_domain(domain: str):
             labels.append(label_idx)
     return np.stack(images), np.array(labels)
 
-X_src, y_src = load_domain('source')   # shape (600, 32, 32)
-X_tgt, y_tgt = load_domain('target')   # shape (600, 32, 32)
-print(X_src.shape, y_src.shape)        # (600, 32, 32) (600,)
+X_src, y_src = load_domain('source')   # shape (3000, 32, 32)
+X_tgt, y_tgt = load_domain('target')   # shape (3000, 32, 32)
+print(X_src.shape, y_src.shape)
 ```
 
----
 
 ## Generation Method
 
 Each image is produced by the following three-step procedure:
 
 **Step 1 — Background.**  
-A 32×32 float array is sampled pixel-wise from N(μ_bg, σ_bg), clipped to [0, 1].
-The parameters (μ_bg, σ_bg) are the **only** quantity that differs between source
-and target domains.
+A 32×32 float array is sampled pixel-wise from N(μ_bg, σ_bg), clipped to [0, 1]. The parameters (μ_bg, σ_bg) are the **only** quantity that differs between source and target domains.
 
 **Step 2 — Shape.**  
-A foreground intensity is set to min(μ_bg + 0.25, 1). The geometric shape
-(determined by the class label) is rasterised at a randomised scale (radius ≈ 22–32%
-of image width) with a small random centre jitter (±8% of image width) to prevent
-the model exploiting a fixed spatial prior.
+A foreground intensity is set to min(μ_bg + 0.25, 1). The geometric shape (determined by the class label) is rasterised at a randomised scale (radius ≈ 22–32% of image width) with a small random centre jitter (±8% of image width) to prevent the model exploiting a fixed spatial prior.
 
 **Step 3 — Quantise and save.**  
 The float array is scaled to [0, 255], cast to uint8, and saved as a greyscale PNG.
 
-> **Design rationale:** The +0.25 foreground offset is applied in both domains, so
-> the relative contrast of shape versus background is preserved across domains.
-> The shape is always visible, but the absolute intensity of both foreground and
-> background shifts together with μ_bg. The **only** cue available for domain
-> discrimination is therefore the absolute intensity level — precisely the
-> quantity encoded in BN statistics.
+> **Design rationale:** The +0.25 foreground offset is applied in both domains, so the relative contrast of shape versus background is preserved across domains. The shape is always visible, but the absolute intensity of both foreground and background shifts together with μ_bg. The only systematic cue available for domain discrimination is the image intensity distribution. Since all classes share identical statistics within a domain, shape remains the only label-related signal while intensity statistics become the only domain-related signal.
 
-Full source code: [`code/generate_dataset.py`](code/generate_dataset.py)
-
----
 
 ## Expected Experimental Outcomes
 
-The dataset directly supports the three controlled checks (c1/c2/c3) from the
-AdaBN storyline (van Gemert format):
+### Source-Domain Performance
 
-### c1 — Baseline is reasonable
+A standard CNN equipped with Batch Normalisation should achieve high accuracy on source-domain test data, demonstrating that the classification task is straightforward and that the baseline model can successfully learn the shape categories.
 
-Train a small BN-equipped CNN on the source domain. It should achieve
-**near-perfect accuracy (>95%)** on source test images, confirming the task is
-learnable and the baseline is fairly represented.
+Expected result:
 
-### c2 — Baseline suffers from the problem ⚠️
+> Source-domain accuracy should be high (typically above 95%).
 
-Apply the source-trained model to **target images without adapting BN statistics**.
-Accuracy should degrade substantially — ideally near chance (33%) — because the
-stored running statistics (μ ≈ 0.42, σ ≈ 0.08) mis-normalise activations whose
-true distribution has μ ≈ 0.77, σ ≈ 0.14 at every layer.
+### Effect of Domain Shift
 
-### c3 — AdaBN addresses the problem ✓
+When evaluated on the target domain, the source-trained model continues using Batch Normalisation statistics estimated from the source distribution.
 
-Re-estimate BN statistics (μ, σ²) from unlabelled target images via a single
-forward pass (no labels required). Accuracy on target images should recover to
-**near-source levels (>90%)**, confirming that the weight matrices correctly encode
-shape identity — only the BN statistics were wrong.
+Because the target domain has substantially different intensity statistics, these stored statistics become mismatched to the incoming activations.
 
-> **Link to Tent:** Any residual accuracy gap after AdaBN correction can be attributed
-> to mismatch in the affine parameters (γ, β) — directly motivating the Tent
-> extension, which additionally optimises (γ, β) via entropy minimisation.
+Expected result:
 
----
+> Target-domain accuracy should decrease relative to source-domain accuracy.
 
-## Deliverables
+This behaviour corresponds to the domain-shift problem identified by AdaBN.
 
-| File | Description |
-|---|---|
-| `code/generate_dataset.py` | Full dataset generation script |
-| `source/`, `target/` | 1,200 greyscale PNGs across 6 class-domain folders |
-| `figures/domain_shift_vis.png` | Side-by-side source/target comparison with intensity histogram |
-| `figures/bn_stats_comparison.png` | BN statistics (μ, σ) histograms for both domains |
-| `metadata.json` | Generation parameters, class map, and sample manifest |
-| `blog_post/adabn_blog_british.html` | Self-contained HTML blog post (British English) |
-| `blog_post/blog_post.tex` | LaTeX blog post source (British English, Overleaf-ready) |
-| `blog_post/blog_overleaf.zip` | Complete Overleaf upload package (.tex + all images) |
-| `storyline/adabn_storyline.tex` | AdaBN storyline in van Gemert format |
-| `storyline/adabn_storyline.pdf` | Compiled storyline PDF |
+### Effect of AdaBN
 
----
+AdaBN replaces the source-domain Batch Normalisation statistics with statistics computed from unlabelled target-domain samples while keeping all learned weights fixed.
 
-## Requirements
+Expected result:
 
-| Package | Version tested | Purpose |
-|---|---|---|
-| `numpy` | ≥ 1.24 | Array generation, random sampling |
-| `Pillow` | ≥ 9.0 | PNG save/load |
-| `matplotlib` | ≥ 3.7 | Diagnostic figures |
+> Target-domain accuracy after AdaBN should be higher than target-domain accuracy before adaptation.
 
-No GPU is required. The script runs in under 10 seconds on a standard laptop.
+Recovery does not need to be perfect; however, a substantial improvement would support the AdaBN hypothesis that correcting BN statistics reduces domain shift.
 
-```bash
-pip install numpy pillow matplotlib
-```
+### Connection to Tent
 
----
+Tent extends AdaBN by not only re-estimating Batch Normalisation statistics (μ, σ²), but also adapting the affine Batch Normalisation parameters (γ, β) through entropy minimisation.
 
-## References
+Any remaining performance gap after AdaBN adaptation therefore motivates the additional optimisation performed by Tent.
 
-```bibtex
-@article{adabn,
-  author    = {Li, Yanghao and Wang, Naiyan and Shi, Jianping
-               and Liu, Jiaying and Hou, Xiaodi},
-  title     = {Revisiting Batch Normalization for Practical Domain Adaptation},
-  journal   = {ICLR Workshop},
-  year      = {2017},
-  url       = {https://arxiv.org/abs/1603.04779}
-}
 
-@inproceedings{tent,
-  author    = {Wang, Dequan and Shelhamer, Evan and Liu, Shaoteng
-               and Olshausen, Bruno and Darrell, Trevor},
-  title     = {Tent: Fully Test-Time Adaptation by Entropy Minimization},
-  booktitle = {International Conference on Learning Representations},
-  year      = {2021},
-  url       = {https://arxiv.org/abs/2006.10726}
-}
+## Limitations
 
-@inproceedings{batchnorm,
-  author    = {Ioffe, Sergey and Szegedy, Christian},
-  title     = {Batch Normalization: Accelerating Deep Network Training
-               by Reducing Internal Covariate Shift},
-  booktitle = {Proceedings of ICML},
-  year      = {2015},
-  url       = {https://arxiv.org/abs/1502.03167}
-}
-
-@misc{storyline,
-  author = {van Gemert, Jan},
-  title  = {The Storyline: The Beating Heart of Empirical ML/DL Research},
-  year   = {2023},
-  url    = {https://jvgemert.github.io/storyline.pdf}
-}
-```
-
----
-
-## Licence
-
-This dataset and all associated code are released under the
-[MIT Licence](LICENSE). You are free to use, modify, and redistribute
-with attribution.
-
----
-
-*Dataset generated with seed 42. All results are fully reproducible.*  
-*British English used throughout all written materials.*
+This dataset intentionally models a simplified form of domain shift. The source and target domains differ only in image intensity statistics. Real-world domain adaptation problems may additionally involve changes in texture, viewpoint, background, sensor characteristics, object appearance, or class frequencies. Consequently, the dataset evaluates a specific mechanism proposed by AdaBN rather than all forms of domain shift.
