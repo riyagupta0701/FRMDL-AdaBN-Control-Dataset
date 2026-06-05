@@ -204,11 +204,7 @@ if __name__ == '__main__':
     # domains so that the generated domain shift is fully reproducible.
     metadata = {
         'description': (
-            'Controlled dataset for AdaBN (Li et al., arXiv:1603.04779). '
-            'Domain shift is ONLY in pixel intensity statistics (mean, '
-            'variance). Shape class identity is identical across domains. '
-            'This isolates the property: BN statistics encode domain '
-            'identity, and mismatching them causes accuracy loss.'
+            'Control dataset for AdaBN. Pixel intensity mean and standard deviation only. All other factors are identical across domains.'
         ),
         'paper':        'Li et al., arXiv:1603.04779',
         'seed':         SEED,
