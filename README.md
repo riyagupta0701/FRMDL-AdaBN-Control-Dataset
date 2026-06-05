@@ -13,59 +13,41 @@ Wang et al., *Tent: Fully Test-Time Adaptation by Entropy Minimisation* — [arX
 2. [Motivation & Tested Property](#motivation--tested-property)
 3. [Dataset Description](#dataset-description)
 4. [Controlled Factors](#controlled-factors)
-5. [Why this is a controlled dataset?](#why-this-is-a-control-dataset)
-6. [Repository Structure](#repository-structure)
-7. [Quick Start](#quick-start)
-8. [Generation Method](#generation-method)
-9. [Expected Experimental Outcomes](#expected-experimental-outcomes)
-10. [Limitations](#limitations)
+5. [Repository Structure](#repository-structure)
+6. [Quick Start](#quick-start)
+7. [Generation Method](#generation-method)
+8. [Expected Experimental Outcomes](#expected-experimental-outcomes)
+9. [Limitations](#limitations)
 
 
 ## Overview
 
-This repository provides a **minimal, fully controlled** image dataset for empirically
-testing a central hypothesis motivating AdaBN (Li et al., 2017):
+This repository provides a minimal, fully controlled image dataset for empirically testing a central hypothesis motivating AdaBN (Li et al., 2017):
 
-> *Label-related knowledge is stored in the weight matrices of each layer, whereas
-> domain-related information is reflected in Batch Normalisation statistics — the
-> per-channel running mean μ and variance σ² accumulated from the training data.*
+Label-related knowledge is stored in the weight matrices of each layer, whereas domain-related information is reflected in Batch Normalisation statistics. The per-channel running mean μ and variance σ² accumulated from the training data.
 
-The dataset is designed so that **exactly one confounder** varies between the source
-and target domains: the pixel intensity statistics (μ, σ). Shape geometry, class
-labels, image resolution, and spatial layout are all held constant. This allows a
-clean, controlled test of whether mismatching BN statistics alone is sufficient to
-degrade accuracy — and whether correcting them (AdaBN) recovers it.
+The dataset is designed so that exactly one confounder varies between the source and target domains: the pixel intensity statistics (μ, σ). Shape geometry, class labels, image resolution, and spatial layout are all held constant. This allows a clean, controlled test of whether mismatching BN statistics alone is sufficient to degrade accuracy and whether correcting them (AdaBN) recovers it.
 
-The dataset is produced as part of a reproduction study of
-[Tent (arXiv:2006.10726)](https://arxiv.org/abs/2006.10726), for which AdaBN is the
-primary test-time normalisation baseline.
+The dataset is produced for AdaBN which can be used as a test-time normalisation baseline.
 
 
 ## Motivation & Tested Property
 
 ### Background: Batch Normalisation and domain shift
 
-Batch Normalisation (Ioffe & Szegedy, 2015 — [arXiv:1502.03167](https://arxiv.org/abs/1502.03167))
-stabilises deep network training by keeping the input distribution of each layer
-approximately standard-Gaussian. It does so by storing **running statistics**
-(mean μ and variance σ²) computed from the training data, and using those statistics
-at test time to normalise activations.
+Batch Normalisation stabilises deep network training by keeping the input distribution of each layer approximately standard-Gaussian. It does so by storing running statistics (mean μ and variance σ²) computed from the training data, and using those statistics at test time to normalise activations.
 
-When training data (source domain) and test data (target domain) come from different
-distributions — different cameras, sensors, or lighting conditions — those stored
-statistics become **mismatched** to the incoming target activations at every layer of
-the network. This is the mechanism AdaBN identifies as the primary cause of
-accuracy degradation under domain shift.
+When training data (source domain) and test data (target domain) come from different distributions (different cameras, sensors, or lighting conditions) those stored statistics become mismatched to the incoming target activations at every layer of the network. This is the mechanism AdaBN identifies as the primary cause of accuracy degradation under domain shift.
 
 ### The property this dataset tests
 
 | | |
 |---|---|
 | Property | Domain-specific information is reflected in BN statistics (μ, σ²). Mismatched source statistics contribute to domain shift, while re-estimating target statistics can reduce this mismatch. |
-| **Single confounder** | Pixel intensity distribution (μ_bg, σ_bg) only. All other factors are identical across domains. |
-| **Control** | Source-trained model on source test images → high accuracy. |
-| **Problem** | Source-trained model on target images (source BN stats) → degraded accuracy. |
-| **Fix** | Re-estimate BN stats from unlabelled target images (AdaBN) → accuracy recovered. |
+| Single confounder | Pixel intensity distribution (μ_bg, σ_bg) only. All other factors are identical across domains. |
+| Control | Source-trained model on source test images → high accuracy. |
+| Problem | Source-trained model on target images (source BN stats) → degraded accuracy. |
+| Fix | Re-estimate BN stats from unlabelled target images (AdaBN) → accuracy recovered. |
 
 ### Connection to AdaBN
 
@@ -73,11 +55,7 @@ The motivation comes directly from the pilot experiment in AdaBN (Section 3.1, F
 
 ### Why this matters for Tent
 
-Tent (Wang et al., 2021) extends AdaBN by additionally **optimising** the BN affine
-parameters (γ, β) via entropy minimisation — on top of re-estimating (μ, σ²).
-Understanding why re-estimating the statistics alone already helps, and by how much,
-is essential groundwork for understanding the motivation and incremental contribution
-of Tent. The controlled setting here isolates that step precisely.
+Tent (Wang et al., 2021) extends AdaBN by additionally optimising the BN affine parameters (γ, β) via entropy minimisation, on top of re-estimating (μ, σ²). Understanding why re-estimating the statistics alone already helps, and by how much, is essential groundwork for understanding the motivation and incremental contribution of Tent. The controlled setting here isolates that step precisely.
 
 ### Goal of the Control Dataset
 
@@ -167,38 +145,20 @@ The class distribution is perfectly balanced across domains.
 
 ### Domain shift visualisation
 
-![Domain shift visualisation](figures/domain_shift_vis.png)
-
 *Source (top row) versus target (bottom row). Shape identity is unchanged while image intensity statistics shift substantially.*
+
+![Domain shift visualisation](figures/domain_shift_vis.png)
 
 ### BN Statistics Comparison
 
-![BN statistics comparison](figures/bn_stats_vis.png)
-
 *Simulated Batch Normalisation statistics showing the separation between source and target distributions. AdaBN addresses this mismatch by replacing source-domain BN statistics with target-domain statistics.*
+
+![BN statistics comparison](figures/bn_stats_vis.png)
 
 
 ## Controlled Factors
 
-| Property | Source | Target |
-|-----------|---------|---------|
-| Classes | Same | Same |
-| Labels | Same | Same |
-| Shapes | Same | Same |
-| Geometry | Same | Same |
-| Resolution | Same | Same |
-| Class frequencies | Same | Same |
-| Mean intensity | Different | Different |
-| Variance | Different | Different |
-
-The only systematic difference between domains is the image intensity distribution. This design isolates the role of distribution statistics while controlling for all task-relevant factors.
-
-
-## Why this is a Control Dataset
-
-A control dataset should isolate one specific property while holding all other factors constant.
-
-In this dataset:
+A control dataset isolates one specific property while holding all other factors constant. In this dataset:
 
 | Factor | Controlled? |
 |----------|----------|
@@ -207,12 +167,10 @@ In this dataset:
 | Class frequencies | Yes |
 | Resolution | Yes |
 | Foreground contrast | Yes |
-| Mean intensity | No |
-| Variance | No |
+| Mean intensity (μ_bg) | No — varies by domain |
+| Variance (σ_bg²) | No — varies by domain |
 
-The source and target domains differ only in image intensity statistics. Any performance degradation therefore cannot be attributed to changes in semantics, class identity, geometry, or dataset composition.
-
-This allows a direct test of the AdaBN hypothesis that domain-specific information is reflected in Batch Normalisation statistics and that mismatched BN statistics contribute to domain shift.
+The source and target domains differ only in image intensity statistics. Any performance degradation therefore cannot be attributed to changes in semantics, class identity, geometry, or dataset composition. This allows a direct test of the AdaBN hypothesis that mismatched BN statistics contribute to domain shift.
 
 
 ## Repository Structure
@@ -317,16 +275,16 @@ print(X_src.shape, y_src.shape)
 
 Each image is produced by the following three-step procedure:
 
-**Step 1 — Background.**  
-A 32×32 float array is sampled pixel-wise from N(μ_bg, σ_bg), clipped to [0, 1]. The parameters (μ_bg, σ_bg) are the **only** quantity that differs between source and target domains.
+**Step 1: Background**  
+A 32×32 float array is sampled pixel-wise from N(μ_bg, σ_bg), clipped to [0, 1]. The parameters (μ_bg, σ_bg) are the only quantity that differs between source and target domains.
 
-**Step 2 — Shape.**  
+**Step 2: Shape**  
 A foreground intensity is set to min(μ_bg + 0.25, 1). The geometric shape (determined by the class label) is rasterised at a randomised scale (radius ≈ 22–32% of image width) with a small random centre jitter (±8% of image width) to prevent the model exploiting a fixed spatial prior.
 
-**Step 3 — Quantise and save.**  
+**Step 3: Quantise and save**  
 The float array is scaled to [0, 255], cast to uint8, and saved as a greyscale PNG.
 
-> **Design rationale:** The +0.25 foreground offset is applied in both domains, so the relative contrast of shape versus background is preserved across domains. The shape is always visible, but the absolute intensity of both foreground and background shifts together with μ_bg. The only systematic cue available for domain discrimination is the image intensity distribution. Since all classes share identical statistics within a domain, shape remains the only label-related signal while intensity statistics become the only domain-related signal.
+**Design rationale:** The +0.25 foreground offset is applied in both domains, so the relative contrast of shape versus background is preserved across domains. The shape is always visible, but the absolute intensity of both foreground and background shifts together with μ_bg. The only systematic cue available for domain discrimination is the image intensity distribution. Since all classes share identical statistics within a domain, shape remains the only label-related signal while intensity statistics become the only domain-related signal.
 
 
 ## Expected Experimental Outcomes
