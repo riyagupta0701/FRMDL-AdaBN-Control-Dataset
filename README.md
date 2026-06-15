@@ -1,6 +1,6 @@
 # AdaBN Control Dataset
 
-Control dataset for testing the role of Batch Normalisation statistics under domain shift.
+Control dataset for testing the role of Batch Normalisation statistics under domain shift. The dataset consists of two domains — *source* and *target* — each containing 3000 labelled greyscale images across three geometric classes.
 
 Based on: <br>
 Li et al., *Revisiting Batch Normalisation for Practical Domain Adaptation* — [arXiv:1603.04779](https://arxiv.org/abs/1603.04779) (AdaBN) <br>
