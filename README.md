@@ -35,7 +35,7 @@ The dataset was created to evaluate the AdaBN adaptation mechanism and to provid
 
 ### Background: Batch Normalisation and domain shift
 
-Batch Normalisation stabilises deep network training by normalising activations to have approximately zero mean and unit variance. It does so by storing running statistics (mean μ and variance σ²) computed from the training data, and using those statistics at test time to normalise activations.
+Batch Normalisation stabilises deep network training by normalising activations to have approximately zero mean and unit variance. It does so by storing BN running statistics (mean μ and variance σ²) computed from the training data, and using those statistics at test time to normalise activations.
 
 When training data (source domain) and test data (target domain) come from different distributions (different cameras, sensors, or lighting conditions) those stored statistics become mismatched to the incoming target activations at every layer of the network. AdaBN hypothesises that mismatched BN statistics contribute significantly to performance degradation under domain shift.
 
@@ -157,7 +157,7 @@ A control dataset isolates one specific property while holding all other factors
 | Shape geometry | Yes |
 | Class frequencies | Yes |
 | Resolution | Yes |
-| Foreground contrast | Yes |
+| Shape-to-background contrast | Yes |
 | Mean intensity (μ_bg) | No; varies by domain |
 | Standard deviation (σ_bg) | No; varies by domain |
 
